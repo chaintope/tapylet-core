@@ -176,8 +176,8 @@ export function sign(h, d, e) {
     const dArr = toUint8Array(d);
     const sig = secp.sign(hArr, dArr, { lowS: true });
     return sig.toCompactRawBytes();
-  } catch (err) {
-    console.error("Sign error:", err);
+  } catch {
+    // Do not log in the signing path (avoid leaking operational detail).
     return null;
   }
 }

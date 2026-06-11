@@ -1,6 +1,8 @@
 import * as tapyrus from "tapyrusjs-lib"
 import { getAddressUtxos, broadcastTransaction, isTpcColorId, type Utxo } from "../api/esplora"
 import { getKeyPairFromMnemonic } from "./hdwallet"
+import { validateAddress } from "./address"
+import { isValidAmount, MAX_COLORED_AMOUNT } from "../utils/validation"
 import { DUST_THRESHOLD, DEFAULT_FEE_RATE } from "../constants/transaction"
 
 // Filter UTXOs by colorId
@@ -62,9 +64,17 @@ export const createAndSignTransaction = async (
 ): Promise<SendResult> => {
   const { fromAddress, toAddress, amount, mnemonic, feeRate = DEFAULT_FEE_RATE } = options
 
-  // Validate amount
+  // Validate amount: must be a safe positive integer within range...
+  if (!isValidAmount(amount)) {
+    throw new Error("Invalid amount")
+  }
+  // ...and at least the dust threshold.
   if (amount < DUST_THRESHOLD) {
     throw new Error(`Amount must be at least ${DUST_THRESHOLD} tapyrus`)
+  }
+  // Validate the recipient address before building/signing/broadcasting.
+  if (!validateAddress(toAddress)) {
+    throw new Error("Invalid recipient address")
   }
 
   // Get UTXOs (TPC only)
@@ -182,8 +192,12 @@ const createAssetTransactionInternal = async (
   const { fromAddress, toAddress, amount, colorId, mnemonic, feeRate } = options
   const isBurn = !toAddress
 
-  if (amount <= 0) {
+  if (!isValidAmount(amount, MAX_COLORED_AMOUNT) || amount <= 0) {
     throw new Error("Amount must be greater than 0")
+  }
+  // Validate the recipient address for transfers (burn has no recipient).
+  if (!isBurn && !validateAddress(toAddress)) {
+    throw new Error("Invalid recipient address")
   }
 
   // Get all UTXOs

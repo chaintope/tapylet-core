@@ -76,6 +76,24 @@ describe('transaction', () => {
       })).rejects.toThrow('Amount must be at least 546 tapyrus')
     })
 
+    it('should throw error if amount is not a valid integer', async () => {
+      await expect(createAndSignTransaction({
+        fromAddress: testAddress,
+        toAddress: testRecipient,
+        amount: 1.5, // non-integer
+        mnemonic: testMnemonic,
+      })).rejects.toThrow('Invalid amount')
+    })
+
+    it('should throw error if recipient address is invalid', async () => {
+      await expect(createAndSignTransaction({
+        fromAddress: testAddress,
+        toAddress: 'not-a-valid-address',
+        amount: 10000000,
+        mnemonic: testMnemonic,
+      })).rejects.toThrow('Invalid recipient address')
+    })
+
     it('should throw error if no TPC UTXOs available', async () => {
       mockedEsplora.getAddressUtxos.mockResolvedValue([])
 
@@ -127,6 +145,16 @@ describe('transaction', () => {
         colorId: testColorId,
         mnemonic: testMnemonic,
       })).rejects.toThrow('Amount must be greater than 0')
+    })
+
+    it('should throw error if recipient address is invalid', async () => {
+      await expect(createAndSignAssetTransaction({
+        fromAddress: testAddress,
+        toAddress: 'not-a-valid-address',
+        amount: 100,
+        colorId: testColorId,
+        mnemonic: testMnemonic,
+      })).rejects.toThrow('Invalid recipient address')
     })
 
     it('should throw error if no asset UTXOs available', async () => {

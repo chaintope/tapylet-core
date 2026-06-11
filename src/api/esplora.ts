@@ -8,7 +8,7 @@ const EXPLORER_URL = process.env.PLASMO_PUBLIC_EXPLORER_URL
   ?? "https://testnet-explorer.tapyrus.dev.chaintope.com"
 
 export const getExplorerTxUrl = (txid: string): string => {
-  return `${EXPLORER_URL}/tx/${txid}`
+  return `${EXPLORER_URL}/tx/${encodeURIComponent(txid)}`
 }
 
 // Generate colored coin address from regular address and colorId
@@ -25,7 +25,7 @@ export const getColoredAddress = (address: string, colorId: string): string => {
 }
 
 export const getExplorerColorUrl = (colorId: string): string => {
-  return `${EXPLORER_URL}/color/${colorId}`
+  return `${EXPLORER_URL}/color/${encodeURIComponent(colorId)}`
 }
 
 export interface BalanceInfo {
@@ -78,7 +78,7 @@ export const isTpcColorId = (colorId: string | undefined): boolean => {
 }
 
 export const getAddressInfo = async (address: string): Promise<AddressInfo> => {
-  const response = await fetch(`${EXPLORER_API_URL}/address/${address}`)
+  const response = await fetch(`${EXPLORER_API_URL}/address/${encodeURIComponent(address)}`)
   if (!response.ok) {
     throw new Error(`Failed to fetch address info: ${response.status}`)
   }
@@ -86,7 +86,7 @@ export const getAddressInfo = async (address: string): Promise<AddressInfo> => {
 }
 
 export const getAddressUtxos = async (address: string): Promise<Utxo[]> => {
-  const response = await fetch(`${EXPLORER_API_URL}/address/${address}/utxo`)
+  const response = await fetch(`${EXPLORER_API_URL}/address/${encodeURIComponent(address)}/utxo`)
   if (!response.ok) {
     throw new Error(`Failed to fetch UTXOs: ${response.status}`)
   }
@@ -257,7 +257,7 @@ export interface TransactionInfo {
 }
 
 export const getTransactionInfo = async (txid: string): Promise<TransactionInfo> => {
-  const response = await fetch(`${EXPLORER_API_URL}/tx/${txid}`)
+  const response = await fetch(`${EXPLORER_API_URL}/tx/${encodeURIComponent(txid)}`)
   if (!response.ok) {
     throw new Error(`Failed to fetch transaction: ${response.status}`)
   }

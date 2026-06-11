@@ -21,6 +21,15 @@ export interface KeyValueStore {
 /**
  * A key-value store whose contents are encrypted at rest behind a password.
  * The password must be set (via setPassword) before reads/writes succeed.
+ *
+ * SECURITY CONTRACT: implementations MUST use authenticated encryption (e.g.
+ * AES-GCM) so that reading a value written under a different password fails
+ * (throws or returns null) rather than yielding garbage. `WalletStorage.unlock`
+ * relies on this: it verifies the password by checking that a sentinel value
+ * decrypts back to its expected content. A non-authenticated cipher (e.g.
+ * AES-CTR without a MAC) would silently break that check and accept wrong
+ * passwords. The key must be derived from the password with a strong KDF
+ * (e.g. PBKDF2 with a high iteration count, or Argon2).
  */
 export interface SecureKeyValueStore {
   setPassword(password: string): Promise<void>
