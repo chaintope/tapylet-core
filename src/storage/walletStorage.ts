@@ -64,7 +64,14 @@ export class WalletStorage {
       throw new Error("Storage is locked")
     }
     const data = await this.secureStorage.get<WalletData>(STORAGE_KEYS.WALLET_DATA)
-    return data || null
+    if (!data) return null
+    // Backward compat: wallets created before the field rename persisted the
+    // mnemonic under `encryptedMnemonic`. Surface it as `mnemonic` so callers
+    // only need to read the new field. Migrates to the new shape on next save.
+    if (data.mnemonic == null && data.encryptedMnemonic != null) {
+      data.mnemonic = data.encryptedMnemonic
+    }
+    return data
   }
 
   async walletExists(): Promise<boolean> {

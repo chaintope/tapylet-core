@@ -9,7 +9,7 @@ describe('WalletStorage', () => {
 
   const password = 'correct horse battery staple'
   const walletData: WalletData = {
-    encryptedMnemonic: 'encrypted-mnemonic',
+    mnemonic: 'test test test test test test test test test test test junk',
     address: '1ExampleAddress',
     publicKey: '02abcdef',
     createdAt: 1700000000000,
@@ -82,6 +82,21 @@ describe('WalletStorage', () => {
 
       await storage.unlock(password)
       expect(await storage.getWallet()).toEqual(walletData)
+    })
+
+    it('migrates a legacy wallet that stored the mnemonic under encryptedMnemonic', async () => {
+      await storage.setPassword(password)
+      // Simulate a wallet persisted before the field rename: only the legacy
+      // `encryptedMnemonic` key is present, no `mnemonic`.
+      await secure.set('wallet_data', {
+        encryptedMnemonic: 'legacy mnemonic phrase',
+        address: '1LegacyAddress',
+        publicKey: '02legacy',
+        createdAt: 1600000000000,
+      })
+
+      const retrieved = await storage.getWallet()
+      expect(retrieved?.mnemonic).toBe('legacy mnemonic phrase')
     })
   })
 
