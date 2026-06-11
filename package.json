@@ -1,5 +1,5 @@
 {
-  "name": "@chaintope/tapylet-core",
+  "name": "@tapylet/core",
   "version": "0.0.1",
   "description": "Platform-agnostic core for Tapylet — Tapyrus wallet logic (HD wallet, transactions, token issuance, storage interfaces)",
   "author": "azuchi@chaintope.com",
