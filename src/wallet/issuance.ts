@@ -39,6 +39,25 @@ export interface IssueOptions {
   mnemonic: string
   fromAddress: string
   feeRate?: number
+  // Number of colored outputs to split the issued amount across (1-100).
+  // The total amount is divided evenly; any remainder goes to the last output.
+  split?: number
+}
+
+// Maximum number of colored outputs an issuance can be split into.
+// Mirrors the Tapyrus API `split` upper bound.
+export const MAX_SPLIT = 100
+
+// Distribute `amount` across `split` outputs as evenly as possible.
+// The remainder is added to the last output,
+// and when amount < split only `amount` outputs of 1 are created.
+export const splitAmount = (amount: number, split: number): number[] => {
+  const count = Math.min(split, amount)
+  const base = Math.floor(amount / count)
+  const outputs = new Array(count - 1).fill(base)
+  const last = amount - base * (count - 1)
+  outputs.push(last)
+  return outputs
 }
 
 export interface IssueResult {
@@ -87,10 +106,18 @@ export const issueToken = async (options: IssueOptions): Promise<IssueResult> =>
     mnemonic,
     fromAddress,
     feeRate = DEFAULT_FEE_RATE,
+    split = 1,
   } = options
 
   if (amount <= 0) {
     throw new Error("Amount must be greater than 0")
+  }
+
+  // NFTs are indivisible; any other token may be split across outputs.
+  const effectiveSplit = tokenType === "nft" ? 1 : split
+
+  if (!Number.isInteger(effectiveSplit) || effectiveSplit < 1 || effectiveSplit > MAX_SPLIT) {
+    throw new Error(`split must be an integer between 1 and ${MAX_SPLIT}`)
   }
 
   // Get keys from mnemonic
@@ -123,7 +150,8 @@ export const issueToken = async (options: IssueOptions): Promise<IssueResult> =>
     fromAddress,
     feeRate,
     network,
-    tokenType
+    tokenType,
+    effectiveSplit
   )
 }
 
@@ -138,8 +166,11 @@ const issueTokenInternal = async (
   fromAddress: string,
   feeRate: number,
   network: tapyrus.Network,
-  tokenType: TokenType
+  tokenType: TokenType,
+  split: number
 ): Promise<IssueResult> => {
+  // Amount distributed across the colored outputs.
+  const splitOutputs = splitAmount(amount, split)
   // Step 1: Create P2C address and send TPC to it
   const p2cPayment = tapyrus.payments.p2pkh({
     pubkey: p2cPublicKey,
@@ -155,8 +186,9 @@ const issueTokenInternal = async (
   const tx1EstimatedSize = 10 + 148 + 34 * 2
   const tx1Fee = tx1EstimatedSize * feeRate
 
-  // Tx2: 1 P2C input + additional inputs for fee, 2 outputs (colored + change)
-  const tx2EstimatedSize = 10 + 148 * 2 + 34 * 2
+  // Tx2: 1 P2C input + additional inputs for fee,
+  // N colored outputs (one per split) + 1 change output
+  const tx2EstimatedSize = 10 + 148 * 2 + 34 * (splitOutputs.length + 1)
   const tx2Fee = tx2EstimatedSize * feeRate
 
   // Total needed: P2C amount + both fees
@@ -221,14 +253,16 @@ const issueTokenInternal = async (
     tx2InputTotal += tx1Change
   }
 
-  // Colored output
+  // Colored outputs (one per split, all to fromAddress)
   const fromAddressDecoded = tapyrus.address.fromBase58Check(fromAddress)
   const coloredScript = tapyrus.payments.cp2pkh({
     colorId: colorId,
     hash: fromAddressDecoded.hash,
     network,
   }).output!
-  txb2.addOutput(coloredScript, amount)
+  for (const outputAmount of splitOutputs) {
+    txb2.addOutput(coloredScript, outputAmount)
+  }
 
   // Change output
   const tx2Change = tx2InputTotal - tx2Fee

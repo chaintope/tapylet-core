@@ -1,6 +1,6 @@
 {
   "name": "@tapylet/core",
-  "version": "0.0.3",
+  "version": "0.0.4",
   "description": "Platform-agnostic core for Tapylet — Tapyrus wallet logic (HD wallet, transactions, token issuance, storage interfaces)",
   "author": "azuchi@chaintope.com",
   "license": "MIT",
