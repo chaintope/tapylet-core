@@ -1,4 +1,4 @@
-import { issueToken, type TokenType, type MetadataFields } from '~/core/wallet/issuance'
+import { issueToken, splitAmount, type TokenType, type MetadataFields } from '~/core/wallet/issuance'
 import * as esplora from '~/core/api/esplora'
 import * as hdwallet from '~/core/wallet/hdwallet'
 import { TEST_MNEMONIC, TEST_ADDRESS, mockPublicKey, mockKeyPairWithNetwork } from '../../helpers/mockWallet'
@@ -262,6 +262,111 @@ describe('issuance', () => {
 
       // Each NFT has unique colorId
       expect(result1.colorId).not.toBe(result2.colorId)
+    })
+  })
+
+  describe('splitAmount', () => {
+    it('should distribute evenly when divisible', () => {
+      expect(splitAmount(100, 4)).toEqual([25, 25, 25, 25])
+    })
+
+    it('should put the remainder on the last output', () => {
+      expect(splitAmount(10, 3)).toEqual([3, 3, 4])
+    })
+
+    it('should return a single output when split is 1', () => {
+      expect(splitAmount(1000, 1)).toEqual([1000])
+    })
+
+    it('should create only `amount` outputs when amount < split', () => {
+      expect(splitAmount(2, 3)).toEqual([1, 1])
+    })
+  })
+
+  describe('issueToken - split', () => {
+    it('should create one colored output per split plus a change output', async () => {
+      const tapyrus = await import('tapyrusjs-lib')
+      const broadcastCalls: string[] = []
+      mockedEsplora.broadcastTransaction.mockImplementation(async (txHex) => {
+        broadcastCalls.push(txHex)
+        return (broadcastCalls.length).toString(16).padStart(64, '0')
+      })
+
+      await issueToken({
+        tokenType: 'reissuable',
+        amount: 100,
+        split: 4,
+        metadata: { ...baseMetadata, tokenType: 'reissuable' },
+        mnemonic: testMnemonic,
+        fromAddress: testAddress,
+      })
+
+      const issueTx = tapyrus.Transaction.fromHex(broadcastCalls[1])
+      // 4 colored outputs + 1 change output
+      expect(issueTx.outs).toHaveLength(5)
+    })
+
+    it('should default to a single colored output', async () => {
+      const tapyrus = await import('tapyrusjs-lib')
+      const broadcastCalls: string[] = []
+      mockedEsplora.broadcastTransaction.mockImplementation(async (txHex) => {
+        broadcastCalls.push(txHex)
+        return (broadcastCalls.length).toString(16).padStart(64, '0')
+      })
+
+      await issueToken({
+        tokenType: 'reissuable',
+        amount: 100,
+        metadata: { ...baseMetadata, tokenType: 'reissuable' },
+        mnemonic: testMnemonic,
+        fromAddress: testAddress,
+      })
+
+      const issueTx = tapyrus.Transaction.fromHex(broadcastCalls[1])
+      // 1 colored output + 1 change output
+      expect(issueTx.outs).toHaveLength(2)
+    })
+
+    it('should ignore split for NFTs', async () => {
+      const tapyrus = await import('tapyrusjs-lib')
+      const broadcastCalls: string[] = []
+      mockedEsplora.broadcastTransaction.mockImplementation(async (txHex) => {
+        broadcastCalls.push(txHex)
+        return (broadcastCalls.length).toString(16).padStart(64, '0')
+      })
+
+      await issueToken({
+        tokenType: 'nft',
+        amount: 1,
+        split: 5,
+        metadata: { ...baseMetadata, tokenType: 'nft', decimals: 0 },
+        mnemonic: testMnemonic,
+        fromAddress: testAddress,
+      })
+
+      const issueTx = tapyrus.Transaction.fromHex(broadcastCalls[1])
+      // NFT always has a single colored output + change
+      expect(issueTx.outs).toHaveLength(2)
+    })
+
+    it('should throw error if split is out of range', async () => {
+      await expect(issueToken({
+        tokenType: 'reissuable',
+        amount: 100,
+        split: 101,
+        metadata: { ...baseMetadata, tokenType: 'reissuable' },
+        mnemonic: testMnemonic,
+        fromAddress: testAddress,
+      })).rejects.toThrow('split must be an integer between 1 and 100')
+
+      await expect(issueToken({
+        tokenType: 'reissuable',
+        amount: 100,
+        split: 0,
+        metadata: { ...baseMetadata, tokenType: 'reissuable' },
+        mnemonic: testMnemonic,
+        fromAddress: testAddress,
+      })).rejects.toThrow('split must be an integer between 1 and 100')
     })
   })
 
