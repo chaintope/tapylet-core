@@ -394,7 +394,7 @@ describe('issuance', () => {
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
         fromAddress: testAddress,
-      })).rejects.toThrow('Amount must be greater than 0')
+      })).rejects.toThrow('Amount must be a positive integer')
 
       await expect(issueToken({
         tokenType: 'reissuable',
@@ -402,7 +402,17 @@ describe('issuance', () => {
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
         fromAddress: testAddress,
-      })).rejects.toThrow('Amount must be greater than 0')
+      })).rejects.toThrow('Amount must be a positive integer')
+    })
+
+    it('should throw error if amount is not an integer', async () => {
+      await expect(issueToken({
+        tokenType: 'reissuable',
+        amount: 100.5,
+        metadata: { ...baseMetadata, tokenType: 'reissuable' },
+        mnemonic: testMnemonic,
+        fromAddress: testAddress,
+      })).rejects.toThrow('Amount must be a positive integer')
     })
 
     it('should throw error if no TPC UTXOs available', async () => {
