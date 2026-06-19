@@ -130,8 +130,8 @@ export const issueToken = async (options: IssueOptions): Promise<IssueResult> =>
     split = 1,
   } = options
 
-  if (amount <= 0) {
-    throw new Error("Amount must be greater than 0")
+  if (!Number.isInteger(amount) || amount <= 0) {
+    throw new Error("Amount must be a positive integer")
   }
 
   // NFTs are indivisible; any other token may be split across outputs.
