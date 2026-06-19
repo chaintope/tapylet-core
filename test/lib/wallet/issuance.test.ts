@@ -1,4 +1,4 @@
-import { issueToken, splitAmount, type TokenType, type MetadataFields } from '~/core/wallet/issuance'
+import { issueToken, splitAmount, estimateTxSize, type TokenType, type MetadataFields } from '~/core/wallet/issuance'
 import * as esplora from '~/core/api/esplora'
 import * as hdwallet from '~/core/wallet/hdwallet'
 import { TEST_MNEMONIC, TEST_ADDRESS, mockPublicKey, mockKeyPairWithNetwork } from '../../helpers/mockWallet'
@@ -280,6 +280,22 @@ describe('issuance', () => {
 
     it('should create only `amount` outputs when amount < split', () => {
       expect(splitAmount(2, 3)).toEqual([1, 1])
+    })
+  })
+
+  describe('estimateTxSize', () => {
+    it('should sum overhead, inputs and p2pkh outputs', () => {
+      // 10 + 148 + 34 * 2 (the tx1 shape: 1 input, P2C + change)
+      expect(estimateTxSize(1, 2)).toBe(226)
+    })
+
+    it('should count cp2pkh outputs as 69 bytes each', () => {
+      // 10 + 148 * 2 + 34 + 69 * 4 (the tx2 shape with 4 colored outputs)
+      expect(estimateTxSize(2, 1, 4)).toBe(616)
+    })
+
+    it('should add 69 bytes per extra colored output', () => {
+      expect(estimateTxSize(2, 1, 2) - estimateTxSize(2, 1, 1)).toBe(69)
     })
   })
 
