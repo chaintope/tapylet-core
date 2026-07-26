@@ -1,15 +1,20 @@
 import { Metadata, NetworkId } from "tapyrusjs-lib"
 
-export { Metadata }
+import { getNetworkId } from "../config/network"
 
-const NETWORK_ID_STR = process.env.PLASMO_PUBLIC_NETWORK_ID ?? "1939510133"
-const networkId = Number(NETWORK_ID_STR) as NetworkId
+export { Metadata }
 
 // In-memory cache
 const metadataCache = new Map<string, Metadata | null>()
 
 export const getTokenMetadata = async (colorId: string): Promise<Metadata | null> => {
   if (metadataCache.has(colorId)) return metadataCache.get(colorId)!
+
+  // Read at call time, not module load: the host injects the network during
+  // startup, which may run after this module is first imported. Kept outside
+  // the try below so a missing configuration surfaces as an error instead of
+  // being cached as "this token has no metadata".
+  const networkId = getNetworkId() as NetworkId
 
   try {
     const entry = await Metadata.fetch(colorId, networkId)
