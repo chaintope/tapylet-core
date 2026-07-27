@@ -246,14 +246,19 @@ describe('uri', () => {
       expect(parseTapyrusUri(`tapyrus:${TESTNET}/${CP2PKH}?coin=0`, TESTNET)).toBeNull()
     })
 
-    // Deliberately asymmetric with coin: the ABNF for amount is
-    // `"amount=" *digit [ "." *digit ]` with no lower bound, while coin's spec
-    // text requires a positive integer. Rejecting a zero amount would be this
-    // parser inventing a rule the TIP does not state.
-    it('should accept a zero amount', () => {
-      expect(parseTapyrusUri(`tapyrus:${TESTNET}/${P2PKH}?amount=0`, TESTNET)?.amount).toBe('0')
-      expect(parseTapyrusUri(`tapyrus:${TESTNET}/${P2PKH}?amount=0.0`, TESTNET)?.amount).toBe(
-        '0.0',
+    // The ABNF admits a zero amount, but there is no payment to make with one,
+    // so it is rejected alongside coin=0 in every spelling the grammar allows.
+    it('should reject a zero amount', () => {
+      expect(parseTapyrusUri(`tapyrus:${TESTNET}/${P2PKH}?amount=0`, TESTNET)).toBeNull()
+      expect(parseTapyrusUri(`tapyrus:${TESTNET}/${P2PKH}?amount=0.0`, TESTNET)).toBeNull()
+      expect(parseTapyrusUri(`tapyrus:${TESTNET}/${P2PKH}?amount=0.`, TESTNET)).toBeNull()
+      expect(parseTapyrusUri(`tapyrus:${TESTNET}/${P2PKH}?amount=.0`, TESTNET)).toBeNull()
+      expect(parseTapyrusUri(`tapyrus:${TESTNET}/${P2PKH}?amount=00.000`, TESTNET)).toBeNull()
+    })
+
+    it('should accept the smallest non-zero amount', () => {
+      expect(parseTapyrusUri(`tapyrus:${TESTNET}/${P2PKH}?amount=0.00000001`, TESTNET)?.amount).toBe(
+        '0.00000001',
       )
     })
 
@@ -361,6 +366,13 @@ describe('uri', () => {
 
     it('should report an invalid amount', () => {
       expect(parseTapyrusUriResult(`tapyrus:${TESTNET}/${P2PKH}?amount=10,5`, TESTNET)).toEqual({
+        ok: false,
+        reason: 'invalid-amount',
+      })
+    })
+
+    it('should report a zero amount as an invalid amount', () => {
+      expect(parseTapyrusUriResult(`tapyrus:${TESTNET}/${P2PKH}?amount=0`, TESTNET)).toEqual({
         ok: false,
         reason: 'invalid-amount',
       })

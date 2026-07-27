@@ -42,10 +42,8 @@ export interface TapyrusUriPayment {
    */
   address: string
   /**
-   * Amount of TPC in decimal. Standard (P2PKH/P2SH) addresses only. `"0"` is
-   * accepted: the TIP's ABNF is `"amount=" *digit [ "." *digit ]`, which puts
-   * no lower bound on the value, unlike `coin` whose spec text requires a
-   * positive integer. A zero-amount URI is for the caller to handle.
+   * Amount of TPC in decimal, always greater than zero. Standard (P2PKH/P2SH)
+   * addresses only.
    */
   amount?: string
   /** Number of Colored Coin tokens. Colored Coin (CP2PKH/CP2SH) addresses only. */
@@ -198,8 +196,8 @@ export const getColorIdFromAddress = (address: string): string | undefined =>
  *   invalid")
  * - `amount-with-colored-address` / `coin-with-standard-address`: a violation
  *   of "Address Types and Parameter Restrictions"
- * - `invalid-amount` / `invalid-coin`: malformed value (comma as separator,
- *   non-positive or non-integer `coin`)
+ * - `invalid-amount` / `invalid-coin`: malformed or non-positive value (comma
+ *   as separator, zero, non-integer `coin`)
  *
  * Unknown parameters without the `req-` prefix are ignored, as the TIP's
  * forward compatibility rules require.
@@ -235,7 +233,10 @@ export const parseTapyrusUriResult = (
   if (!colorId && coin !== undefined) {
     return { ok: false, reason: "coin-with-standard-address" }
   }
-  if (amount !== undefined && !AMOUNT_RE.test(amount)) {
+  // The ABNF puts no lower bound on amount, but a URI asking for 0 TPC has no
+  // payment to make, so it is rejected the same way coin=0 is rather than
+  // pushed onto every caller to special-case.
+  if (amount !== undefined && (!AMOUNT_RE.test(amount) || Number(amount) <= 0)) {
     return { ok: false, reason: "invalid-amount" }
   }
   if (coin !== undefined && (!COIN_RE.test(coin) || Number(coin) <= 0)) {
