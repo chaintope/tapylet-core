@@ -36,6 +36,24 @@ const CP2SH = tapyrus.payments.cp2sh({
   network: tapyrus.networks.prod,
 }).address!
 
+// Addresses that decode as base58check but are not valid Tapyrus `prod`
+// addresses: the dev network's version bytes, and a Color ID payload wearing
+// an uncolored version byte.
+const DEV_P2PKH = tapyrus.payments.p2pkh({
+  hash: HASH,
+  network: tapyrus.networks.dev,
+}).address!
+const DEV_CP2PKH = tapyrus.payments.cp2pkh({
+  hash: HASH,
+  colorId: Buffer.from(COLOR_ID, 'hex'),
+  network: tapyrus.networks.dev,
+}).address!
+const MISMATCHED_VERSION = tapyrus.address.toBase58Check(
+  HASH,
+  tapyrus.networks.prod.pubKeyHash,
+  Buffer.from(COLOR_ID, 'hex'),
+)
+
 describe('uri', () => {
   describe('buildAddressUri', () => {
     it('should build a TIP-0021 URI with the network id in the path', () => {
@@ -99,6 +117,14 @@ describe('uri', () => {
 
     it('should return undefined for a non-address', () => {
       expect(getColorIdFromAddress('not-an-address')).toBeUndefined()
+    })
+
+    it('should return undefined for a dev-network Colored Coin address', () => {
+      expect(getColorIdFromAddress(DEV_CP2PKH)).toBeUndefined()
+    })
+
+    it('should return undefined when a Color ID payload carries an uncolored version byte', () => {
+      expect(getColorIdFromAddress(MISMATCHED_VERSION)).toBeUndefined()
     })
   })
 
@@ -185,6 +211,15 @@ describe('uri', () => {
       expect(parseTapyrusUri(`tapyrus:${TESTNET}/not-an-address?amount=1`, TESTNET)).toBeNull()
     })
 
+    it('should reject an address whose version byte is not a Tapyrus one', () => {
+      expect(parseTapyrusUri(`tapyrus:${TESTNET}/${DEV_P2PKH}`, TESTNET)).toBeNull()
+      expect(parseTapyrusUri(`tapyrus:${TESTNET}/${DEV_CP2PKH}`, TESTNET)).toBeNull()
+    })
+
+    it('should reject an address whose version byte disagrees with its payload', () => {
+      expect(parseTapyrusUri(`tapyrus:${TESTNET}/${MISMATCHED_VERSION}`, TESTNET)).toBeNull()
+    })
+
     it('should reject an address containing whitespace', () => {
       expect(
         parseTapyrusUri(`tapyrus:${TESTNET}/${P2PKH.slice(0, 5)} ${P2PKH.slice(5)}`, TESTNET),
@@ -209,6 +244,17 @@ describe('uri', () => {
 
     it('should reject a zero coin', () => {
       expect(parseTapyrusUri(`tapyrus:${TESTNET}/${CP2PKH}?coin=0`, TESTNET)).toBeNull()
+    })
+
+    // Deliberately asymmetric with coin: the ABNF for amount is
+    // `"amount=" *digit [ "." *digit ]` with no lower bound, while coin's spec
+    // text requires a positive integer. Rejecting a zero amount would be this
+    // parser inventing a rule the TIP does not state.
+    it('should accept a zero amount', () => {
+      expect(parseTapyrusUri(`tapyrus:${TESTNET}/${P2PKH}?amount=0`, TESTNET)?.amount).toBe('0')
+      expect(parseTapyrusUri(`tapyrus:${TESTNET}/${P2PKH}?amount=0.0`, TESTNET)?.amount).toBe(
+        '0.0',
+      )
     })
 
     it('should reject malformed percent-encoding in the query', () => {

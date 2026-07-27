@@ -21,9 +21,32 @@ const AMOUNT_RE = /^\d+(\.\d*)?$|^\.\d+$/
 // coinparam = "coin=" 1*digit — a positive integer number of tokens.
 const COIN_RE = /^\d+$/
 
+// Address version bytes. `prod` is the only parameter set this wallet builds
+// and validates addresses with (see wallet/address.ts), so the same set applies
+// here.
+const STANDARD_VERSIONS: number[] = [
+  tapyrus.networks.prod.pubKeyHash,
+  tapyrus.networks.prod.scriptHash,
+]
+const COLORED_VERSIONS: number[] = [
+  tapyrus.networks.prod.coloredPubKeyHash,
+  tapyrus.networks.prod.coloredScriptHash,
+]
+
 export interface TapyrusUriPayment {
+  /**
+   * The address as written in the URI. Checked only far enough to determine
+   * its type — base58check with a `prod` version byte — which is not the same
+   * as being spendable. Callers must still run it through validateAddress (and
+   * whatever else the send path requires) before using it as a payment target.
+   */
   address: string
-  /** Amount of TPC in decimal. Standard (P2PKH/P2SH) addresses only. */
+  /**
+   * Amount of TPC in decimal. Standard (P2PKH/P2SH) addresses only. `"0"` is
+   * accepted: the TIP's ABNF is `"amount=" *digit [ "." *digit ]`, which puts
+   * no lower bound on the value, unlike `coin` whose spec text requires a
+   * positive integer. A zero-amount URI is for the caller to handle.
+   */
   amount?: string
   /** Number of Colored Coin tokens. Colored Coin (CP2PKH/CP2SH) addresses only. */
   coin?: string
@@ -118,22 +141,30 @@ const parseQuery = (query: string): Map<string, string> | null => {
 }
 
 /**
- * Decodes a base58check Tapyrus address. Returns null when the address does
- * not decode at all, so callers can tell a standard address apart from
- * garbage — a distinction the parameter restrictions below depend on.
+ * Decodes a base58check Tapyrus address, requiring a `prod` version byte that
+ * agrees with the payload: 54 bytes carrying a Color ID must use a CP2PKH/CP2SH
+ * version, 21 bytes a P2PKH/P2SH one. Returns null otherwise, so callers can
+ * tell a standard address apart from a colored one and from garbage — a
+ * distinction the parameter restrictions below depend on.
  *
- * The version byte is deliberately not matched against a network, because no
- * such check exists anywhere: Tapyrus API (15215628) and Testnet (1939510133)
- * share the same address version bytes (tapyrusjs-lib's `prod` parameters), so
- * an address alone cannot say which of them it belongs to. That is exactly why
- * TIP-0021 makes the network id mandatory — the network id in the URI is the
- * only cross-network guard, not a second line of defence behind
- * validateAddress, which hardcodes `prod`.
+ * fromBase58Check accepts any version byte, so without this check a dev-network
+ * address, or one from an unrelated chain with a different prefix, parses as a
+ * valid payment target. What the check cannot do is identify the network:
+ * Tapyrus API (15215628) and Testnet (1939510133) share the `prod` version
+ * bytes, and `prod` in turn matches Bitcoin mainnet's, so an address alone can
+ * never say which network it belongs to. That is exactly why TIP-0021 makes the
+ * network id mandatory — the network id in the URI is the only cross-network
+ * guard.
  */
 const decodeAddress = (address: string): { colorId?: string } | null => {
   try {
-    const { colorId } = tapyrus.address.fromBase58Check(address)
-    return { colorId: colorId?.toString("hex") }
+    const { version, colorId } = tapyrus.address.fromBase58Check(address)
+    if (colorId) {
+      if (!COLORED_VERSIONS.includes(version)) return null
+      return { colorId: colorId.toString("hex") }
+    }
+    if (!STANDARD_VERSIONS.includes(version)) return null
+    return {}
   } catch {
     return null
   }
@@ -157,8 +188,9 @@ export const getColorIdFromAddress = (address: string): string | undefined =>
  *   MUST reject URIs that do not include a valid network ID")
  * - `network-mismatch`: the network id differs from `expectedNetworkId`, i.e.
  *   the URI targets another Tapyrus network
- * - `invalid-address`: the address is not decodable base58check, so its type —
- *   and therefore which parameters it may carry — cannot be determined
+ * - `invalid-address`: the address is not base58check with a Tapyrus version
+ *   byte, so its type — and therefore which parameters it may carry — cannot be
+ *   determined
  * - `malformed-query`: the query has broken percent-encoding
  * - `unsupported-required-param`: a `req-` prefixed parameter is present, none
  *   of which are implemented here ("If a client does not implement any
