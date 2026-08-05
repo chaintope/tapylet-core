@@ -1,14 +1,13 @@
 import * as tapyrus from "tapyrusjs-lib"
+import { getExplorerApiUrl, getExplorerWebUrl } from "../config/explorer"
 import { validateUtxo, validateTransactionInfo, isValidAmount, MAX_AMOUNT } from "../utils/validation"
 
-const EXPLORER_API_URL = process.env.PLASMO_PUBLIC_EXPLORER_API_URL
-  ?? "https://testnet-explorer.tapyrus.dev.chaintope.com/api"
-
-const EXPLORER_URL = process.env.PLASMO_PUBLIC_EXPLORER_URL
-  ?? "https://testnet-explorer.tapyrus.dev.chaintope.com"
+// The explorer endpoints are read per call rather than captured here: a host
+// may switch networks at runtime (see ../config/explorer), and a module-level
+// constant would pin the first network for the life of the process.
 
 export const getExplorerTxUrl = (txid: string): string => {
-  return `${EXPLORER_URL}/tx/${encodeURIComponent(txid)}`
+  return `${getExplorerWebUrl()}/tx/${encodeURIComponent(txid)}`
 }
 
 // Generate colored coin address from regular address and colorId
@@ -25,7 +24,7 @@ export const getColoredAddress = (address: string, colorId: string): string => {
 }
 
 export const getExplorerColorUrl = (colorId: string): string => {
-  return `${EXPLORER_URL}/color/${encodeURIComponent(colorId)}`
+  return `${getExplorerWebUrl()}/color/${encodeURIComponent(colorId)}`
 }
 
 export interface BalanceInfo {
@@ -78,7 +77,7 @@ export const isTpcColorId = (colorId: string | undefined): boolean => {
 }
 
 export const getAddressInfo = async (address: string): Promise<AddressInfo> => {
-  const response = await fetch(`${EXPLORER_API_URL}/address/${encodeURIComponent(address)}`)
+  const response = await fetch(`${getExplorerApiUrl()}/address/${encodeURIComponent(address)}`)
   if (!response.ok) {
     throw new Error(`Failed to fetch address info: ${response.status}`)
   }
@@ -86,7 +85,7 @@ export const getAddressInfo = async (address: string): Promise<AddressInfo> => {
 }
 
 export const getAddressUtxos = async (address: string): Promise<Utxo[]> => {
-  const response = await fetch(`${EXPLORER_API_URL}/address/${encodeURIComponent(address)}/utxo`)
+  const response = await fetch(`${getExplorerApiUrl()}/address/${encodeURIComponent(address)}/utxo`)
   if (!response.ok) {
     throw new Error(`Failed to fetch UTXOs: ${response.status}`)
   }
@@ -230,7 +229,7 @@ export const parseTpc = (tpcString: string): number => {
 }
 
 export const broadcastTransaction = async (txHex: string): Promise<string> => {
-  const response = await fetch(`${EXPLORER_API_URL}/tx`, {
+  const response = await fetch(`${getExplorerApiUrl()}/tx`, {
     method: "POST",
     headers: {
       "Content-Type": "text/plain",
@@ -257,7 +256,7 @@ export interface TransactionInfo {
 }
 
 export const getTransactionInfo = async (txid: string): Promise<TransactionInfo> => {
-  const response = await fetch(`${EXPLORER_API_URL}/tx/${encodeURIComponent(txid)}`)
+  const response = await fetch(`${getExplorerApiUrl()}/tx/${encodeURIComponent(txid)}`)
   if (!response.ok) {
     throw new Error(`Failed to fetch transaction: ${response.status}`)
   }
