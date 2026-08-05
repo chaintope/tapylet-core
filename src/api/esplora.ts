@@ -1,9 +1,9 @@
 import * as tapyrus from "tapyrusjs-lib"
-import { getExplorerApiUrl, getExplorerWebUrl } from "../config/explorer"
+import { getExplorerApiUrl, getExplorerWebUrl } from "../config/network"
 import { validateUtxo, validateTransactionInfo, isValidAmount, MAX_AMOUNT } from "../utils/validation"
 
 // The explorer endpoints are read per call rather than captured here: a host
-// may switch networks at runtime (see ../config/explorer), and a module-level
+// may switch networks at runtime (see ../config/network), and a module-level
 // constant would pin the first network for the life of the process.
 
 export const getExplorerTxUrl = (txid: string): string => {
