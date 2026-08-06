@@ -12,6 +12,18 @@ const MAINNET = 15215628
 
 const COLOR_ID = 'c1' + '22'.repeat(32)
 
+// The registry never touches the explorer endpoints, but a network is
+// configured as a whole, so the tests still have to name them.
+const EXPLORER = {
+  apiUrl: 'https://explorer.example.com/api',
+  webUrl: 'https://explorer.example.com',
+}
+
+const configure = (
+  network: typeof import('~/core/config/network'),
+  networkId: number,
+) => network.configureNetwork({ networkId, explorer: EXPLORER })
+
 const metadata = (name: string) => ({ name }) as never
 
 // Both modules hold state — the metadata cache and the injected network id — so
@@ -46,7 +58,7 @@ describe('api/tokenRegistry', () => {
   describe('caching', () => {
     it('should fetch a Color ID once per network', async () => {
       const { registry, network } = load()
-      network.setNetworkId(TESTNET)
+      configure(network, TESTNET)
       mockFetch.mockResolvedValue({ metadata: metadata('token') })
 
       await registry.getTokenMetadata(COLOR_ID)
@@ -58,11 +70,11 @@ describe('api/tokenRegistry', () => {
 
     it('should refetch the same Color ID after the host switches network', async () => {
       const { registry, network } = load()
-      network.setNetworkId(TESTNET)
+      configure(network, TESTNET)
       mockFetch.mockResolvedValueOnce({ metadata: metadata('testnet token') })
       expect(await registry.getTokenMetadata(COLOR_ID)).toEqual({ name: 'testnet token' })
 
-      network.setNetworkId(MAINNET)
+      configure(network, MAINNET)
       mockFetch.mockResolvedValueOnce({ metadata: metadata('mainnet token') })
       expect(await registry.getTokenMetadata(COLOR_ID)).toEqual({ name: 'mainnet token' })
 
@@ -72,18 +84,18 @@ describe('api/tokenRegistry', () => {
 
     it('should not carry a cached miss across networks', async () => {
       const { registry, network } = load()
-      network.setNetworkId(TESTNET)
+      configure(network, TESTNET)
       mockFetch.mockRejectedValueOnce(new Error('not registered'))
       expect(await registry.getTokenMetadata(COLOR_ID)).toBeNull()
 
-      network.setNetworkId(MAINNET)
+      configure(network, MAINNET)
       mockFetch.mockResolvedValueOnce({ metadata: metadata('mainnet token') })
       expect(await registry.getTokenMetadata(COLOR_ID)).toEqual({ name: 'mainnet token' })
     })
 
     it('should keep returning the cached miss on the same network', async () => {
       const { registry, network } = load()
-      network.setNetworkId(TESTNET)
+      configure(network, TESTNET)
       mockFetch.mockRejectedValue(new Error('not registered'))
 
       expect(await registry.getTokenMetadata(COLOR_ID)).toBeNull()

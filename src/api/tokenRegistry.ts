@@ -14,8 +14,8 @@ export const getTokenMetadata = async (colorId: string): Promise<Metadata | null
   // being cached as "this token has no metadata".
   const networkId = getNetworkId() as NetworkId
 
-  // The network is part of the key because setNetworkId may be called again at
-  // runtime. A Color ID resolves against a per-network registry, so an entry
+  // The network is part of the key because configureNetwork may be called
+  // again at runtime. A Color ID resolves against a per-network registry, so an entry
   // fetched on one network — including a cached null for "not registered" —
   // says nothing about the same Color ID on another.
   const cacheKey = `${networkId}:${colorId}`
