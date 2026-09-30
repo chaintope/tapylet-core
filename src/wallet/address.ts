@@ -1,10 +1,12 @@
 import * as tapyrus from "tapyrusjs-lib"
 
+// Address encoding is fixed to the prod parameters. Tapyrus separates Prod
+// (operational networks, including testnet) from Dev, and that axis is
+// independent of the TIP-0044 network id, so it cannot be looked up from it.
 export const generateAddress = (publicKey: Uint8Array): string => {
-  const network = tapyrus.networks.prod
   const payment = tapyrus.payments.p2pkh({
     pubkey: Buffer.from(publicKey),
-    network,
+    network: tapyrus.networks.prod,
   })
 
   if (!payment.address) {
@@ -16,8 +18,7 @@ export const generateAddress = (publicKey: Uint8Array): string => {
 
 export const validateAddress = (address: string): boolean => {
   try {
-    const network = tapyrus.networks.prod
-    tapyrus.address.toOutputScript(address, network)
+    tapyrus.address.toOutputScript(address, tapyrus.networks.prod)
     return true
   } catch {
     return false

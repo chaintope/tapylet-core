@@ -40,6 +40,7 @@ describe('issuance', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockedHdwallet.getKeyPairFromMnemonic.mockResolvedValue(mockKeyPairWithNetwork)
+    mockedHdwallet.getKeyPairFromLegacyMainnetWallet.mockResolvedValue(mockKeyPairWithNetwork)
     mockedEsplora.getAddressUtxos.mockResolvedValue(mockTpcUtxos)
     mockedEsplora.isTpcColorId.mockImplementation((colorId) => {
       return !colorId || colorId === esplora.TPC_COLOR_ID
@@ -59,6 +60,7 @@ describe('issuance', () => {
         amount: 1000000,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })
 
@@ -69,6 +71,26 @@ describe('issuance', () => {
       expect(result.outPoint).toBeUndefined() // No outPoint for c1
       // 2 broadcasts for c1 (P2C tx + issue tx)
       expect(mockedEsplora.broadcastTransaction).toHaveBeenCalledTimes(2)
+      expect(mockedHdwallet.getKeyPairFromMnemonic).toHaveBeenCalledWith(
+        testMnemonic, tapyrus.NetworkId.TAPYRUS_API
+      )
+      expect(mockedHdwallet.getKeyPairFromLegacyMainnetWallet).not.toHaveBeenCalled()
+    })
+
+    it('should sign with the legacy key when fromLegacyMainnetWallet is set', async () => {
+      const result = await issueToken({
+        tokenType: 'reissuable',
+        amount: 1000000,
+        metadata: { ...baseMetadata, tokenType: 'reissuable' },
+        mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
+        fromLegacyMainnetWallet: true,
+        fromAddress: testAddress,
+      })
+
+      expect(result.txid).toBeDefined()
+      expect(mockedHdwallet.getKeyPairFromLegacyMainnetWallet).toHaveBeenCalledWith(testMnemonic)
+      expect(mockedHdwallet.getKeyPairFromMnemonic).not.toHaveBeenCalled()
     })
 
     it('should create two transactions for reissuable token: P2C funding tx and issue tx', async () => {
@@ -83,6 +105,7 @@ describe('issuance', () => {
         amount: 1000000,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })
 
@@ -105,6 +128,7 @@ describe('issuance', () => {
         amount: 1000000,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })
 
@@ -113,6 +137,7 @@ describe('issuance', () => {
         amount: 500000,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })
 
@@ -128,6 +153,7 @@ describe('issuance', () => {
         amount: 1000000,
         metadata: { ...baseMetadata, tokenType: 'non_reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })
 
@@ -153,6 +179,7 @@ describe('issuance', () => {
         amount: 1000000,
         metadata: { ...baseMetadata, tokenType: 'non_reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })
 
@@ -176,6 +203,7 @@ describe('issuance', () => {
         amount: 1000000,
         metadata: { ...baseMetadata, tokenType: 'non_reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })
 
@@ -184,6 +212,7 @@ describe('issuance', () => {
         amount: 1000000,
         metadata: { ...baseMetadata, tokenType: 'non_reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })
 
@@ -206,6 +235,7 @@ describe('issuance', () => {
         amount: 1,
         metadata: nftMetadata,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })
 
@@ -230,6 +260,7 @@ describe('issuance', () => {
         amount: 1,
         metadata: nftMetadata,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })
 
@@ -252,6 +283,7 @@ describe('issuance', () => {
         amount: 1,
         metadata: nftMetadata,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })
 
@@ -260,6 +292,7 @@ describe('issuance', () => {
         amount: 1,
         metadata: nftMetadata,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })
 
@@ -317,6 +350,7 @@ describe('issuance', () => {
         split: 4,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })
 
@@ -338,6 +372,7 @@ describe('issuance', () => {
         amount: 100,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })
 
@@ -360,6 +395,7 @@ describe('issuance', () => {
         split: 5,
         metadata: { ...baseMetadata, tokenType: 'nft', decimals: 0 },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })
 
@@ -375,6 +411,7 @@ describe('issuance', () => {
         split: 101,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })).rejects.toThrow('split must be an integer between 1 and 100')
 
@@ -384,6 +421,7 @@ describe('issuance', () => {
         split: 0,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })).rejects.toThrow('split must be an integer between 1 and 100')
     })
@@ -396,6 +434,7 @@ describe('issuance', () => {
         split: 150,
         metadata: { ...baseMetadata, tokenType: 'nft' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })).rejects.toThrow('split must be an integer between 1 and 100')
       expect(mockedEsplora.broadcastTransaction).not.toHaveBeenCalled()
@@ -409,6 +448,7 @@ describe('issuance', () => {
         amount: 0,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })).rejects.toThrow('Amount must be a positive integer')
 
@@ -417,6 +457,7 @@ describe('issuance', () => {
         amount: -100,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })).rejects.toThrow('Amount must be a positive integer')
     })
@@ -429,6 +470,7 @@ describe('issuance', () => {
         amount: MAX_COLORED_AMOUNT + 1,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })).rejects.toThrow('Amount must be a positive integer')
       expect(mockedEsplora.broadcastTransaction).not.toHaveBeenCalled()
@@ -440,6 +482,7 @@ describe('issuance', () => {
         amount: 100.5,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })).rejects.toThrow('Amount must be a positive integer')
     })
@@ -452,6 +495,7 @@ describe('issuance', () => {
         amount: 1000000,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })).rejects.toThrow('No TPC UTXOs available')
     })
@@ -472,6 +516,7 @@ describe('issuance', () => {
         amount: 1000000,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })).rejects.toThrow('Insufficient TPC balance for issuance')
     })
@@ -484,6 +529,7 @@ describe('issuance', () => {
         amount: 1000000,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })
 
@@ -499,6 +545,7 @@ describe('issuance', () => {
         amount: 1000000,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
         feeRate: 0.5,
       })).rejects.toThrow('Invalid fee rate')
@@ -510,6 +557,7 @@ describe('issuance', () => {
         amount: 1000000,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
         feeRate: MAX_FEE_RATE + 1,
       })).rejects.toThrow('Invalid fee rate')
@@ -538,6 +586,7 @@ describe('issuance', () => {
         amount: 1000,
         metadata: { ...baseMetadata, tokenType: 'reissuable' },
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         fromAddress: testAddress,
       })
 

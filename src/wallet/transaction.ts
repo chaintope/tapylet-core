@@ -1,6 +1,6 @@
 import * as tapyrus from "tapyrusjs-lib"
 import { getAddressUtxos, broadcastTransaction, isTpcColorId, type Utxo } from "../api/esplora"
-import { getKeyPairFromMnemonic } from "./hdwallet"
+import { resolveKeyPair } from "./resolveKeyPair"
 import { validateAddress, isColoredAddress } from "./address"
 import { isValidAmount, isValidFeeRate, MAX_COLORED_AMOUNT } from "../utils/validation"
 import {
@@ -33,6 +33,12 @@ export interface SendOptions {
   toAddress: string
   amount: number // in tapyrus
   mnemonic: string
+  // TIP-0044 id of the network the signing key is derived for (BIP44 coin type).
+  networkId: number
+  // Sign with the pre-network-split key (see
+  // wallet/hdwallet.ts#getKeyPairFromLegacyMainnetWallet) instead of deriving
+  // one for networkId. Only meaningful with networkId set to the mainnet id.
+  fromLegacyMainnetWallet?: boolean
   feeRate?: number
   // Number of outputs to split the payment across (1-100). Every output gets
   // floor(amount / split); the whole remainder goes to the last output. Every
@@ -80,6 +86,8 @@ export const createAndSignTransaction = async (
     toAddress,
     amount,
     mnemonic,
+    networkId,
+    fromLegacyMainnetWallet,
     feeRate = DEFAULT_FEE_RATE,
     split = 1,
   } = options
@@ -113,7 +121,7 @@ export const createAndSignTransaction = async (
   })
 
   // Get keys from mnemonic
-  const { keyPair, network } = await getKeyPairFromMnemonic(mnemonic)
+  const { keyPair, network } = await resolveKeyPair(mnemonic, networkId, fromLegacyMainnetWallet)
 
   // Create transaction builder
   const txb = new tapyrus.TransactionBuilder(network)
@@ -197,6 +205,8 @@ export interface AssetSendOptions {
   amount: number
   colorId: string
   mnemonic: string
+  networkId: number
+  fromLegacyMainnetWallet?: boolean
   feeRate?: number
   // Number of colored outputs to split the payment across (1-100). Every
   // output gets floor(amount / split); the whole remainder goes to the last
@@ -210,6 +220,8 @@ export interface BurnOptions {
   amount: number
   colorId: string
   mnemonic: string
+  networkId: number
+  fromLegacyMainnetWallet?: boolean
   feeRate?: number
 }
 
@@ -242,6 +254,8 @@ type AssetTransactionInternalOptions = {
   amount: number
   colorId: string
   mnemonic: string
+  networkId: number
+  fromLegacyMainnetWallet?: boolean
   feeRate: number
   split: number
 } & ({ mode: "transfer"; toAddress: string } | { mode: "burn" })
@@ -250,7 +264,7 @@ type AssetTransactionInternalOptions = {
 const createAssetTransactionInternal = async (
   options: AssetTransactionInternalOptions
 ): Promise<SendResult> => {
-  const { fromAddress, amount, colorId, mnemonic, feeRate, split } = options
+  const { fromAddress, amount, colorId, mnemonic, networkId, fromLegacyMainnetWallet, feeRate, split } = options
   const isBurn = options.mode === "burn"
 
   if (!Number.isInteger(amount) || amount <= 0) {
@@ -322,7 +336,7 @@ const createAssetTransactionInternal = async (
   )
 
   // Get keys from mnemonic
-  const { keyPair, network } = await getKeyPairFromMnemonic(mnemonic)
+  const { keyPair, network } = await resolveKeyPair(mnemonic, networkId, fromLegacyMainnetWallet)
 
   // Create transaction builder
   const txb = new tapyrus.TransactionBuilder(network)

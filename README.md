@@ -88,11 +88,13 @@ import {
   createHDWallet,
   generateAddress,
   createAndSignTransaction,
+  NetworkId,
 } from "@tapylet/core/wallet"
 
 const mnemonic = generateMnemonic() // 12-word BIP39 phrase (strength 128)
 
-const keys = await createHDWallet(mnemonic) // { privateKey, publicKey, wif }
+const networkId = NetworkId.TAPYRUS_API // TIP-0044 id; picks the coin type of the derivation path
+const keys = await createHDWallet(mnemonic, networkId) // { privateKey, publicKey, wif }
 const address = generateAddress(keys.publicKey)
 
 // Build + sign a TPC transfer (does not broadcast)
@@ -101,6 +103,7 @@ const { txid, txHex } = await createAndSignTransaction({
   toAddress: "...",
   amount: 1000, // tapyrus
   mnemonic,
+  networkId,
 })
 ```
 
@@ -138,6 +141,7 @@ const result = await issueToken({
   amount: 100,
   metadata: { /* MetadataFields */ },
   mnemonic,
+  networkId,
   fromAddress: address,
 })
 // { txid, colorId, paymentBase, outPoint? }
@@ -186,7 +190,7 @@ const wallet = await walletStorage.getWallet()
 
 | Subpath | Exports |
 | --- | --- |
-| `@tapylet/core/wallet` | `generateMnemonic`, `validateMnemonic`, `mnemonicToSeed`, `createHDWallet`, `getKeyPairFromMnemonic`, `generateAddress`, `validateAddress`, `createAndSignTransaction`, `estimateFee`, `createAndSignAssetTransaction`, `burnAsset`, … |
+| `@tapylet/core/wallet` | `generateMnemonic`, `validateMnemonic`, `mnemonicToSeed`, `createHDWallet`, `getKeyPairFromMnemonic`, `createLegacyMainnetWallet`, `getKeyPairFromLegacyMainnetWallet`, `generateAddress`, `validateAddress`, `createAndSignTransaction`, `estimateFee`, `createAndSignAssetTransaction`, `burnAsset`, … |
 | `@tapylet/core` (issuance) | `issueToken`, `TokenType`, `MetadataFields`, `IssueOptions`, `IssueResult` |
 | `@tapylet/core/api` | `getBalance`, `getAllBalances`, `getAddressUtxos`, `broadcastTransaction`, `getTransactionInfo`, `getTokenMetadata`, `formatTpc`, `formatColorId`, `TPC_COLOR_ID`, … |
 | `@tapylet/core/storage/*` | `WalletStorage`, `IssuedTokenStore`, `PendingTxStore`, `SettingsStore`, `KeyValueStore`, `SecureKeyValueStore` |

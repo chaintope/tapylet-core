@@ -50,6 +50,7 @@ describe('transaction', () => {
   beforeEach(() => {
     jest.clearAllMocks()
     mockedHdwallet.getKeyPairFromMnemonic.mockResolvedValue(mockKeyPairWithNetwork)
+    mockedHdwallet.getKeyPairFromLegacyMainnetWallet.mockResolvedValue(mockKeyPairWithNetwork)
     mockedEsplora.broadcastTransaction.mockResolvedValue('c'.repeat(64))
   })
 
@@ -88,12 +89,32 @@ describe('transaction', () => {
         toAddress: testRecipient,
         amount: 10000000, // 0.1 TPC
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })
 
       expect(result.txid).toBe('c'.repeat(64))
       expect(result.txHex).toBeDefined()
       expect(typeof result.txHex).toBe('string')
       expect(mockedEsplora.broadcastTransaction).toHaveBeenCalledTimes(1)
+      expect(mockedHdwallet.getKeyPairFromMnemonic).toHaveBeenCalledWith(
+        testMnemonic, tapyrus.NetworkId.TAPYRUS_API
+      )
+      expect(mockedHdwallet.getKeyPairFromLegacyMainnetWallet).not.toHaveBeenCalled()
+    })
+
+    it('should sign with the legacy key when fromLegacyMainnetWallet is set', async () => {
+      const result = await createAndSignTransaction({
+        fromAddress: testAddress,
+        toAddress: testRecipient,
+        amount: 10000000,
+        mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
+        fromLegacyMainnetWallet: true,
+      })
+
+      expect(result.txid).toBe('c'.repeat(64))
+      expect(mockedHdwallet.getKeyPairFromLegacyMainnetWallet).toHaveBeenCalledWith(testMnemonic)
+      expect(mockedHdwallet.getKeyPairFromMnemonic).not.toHaveBeenCalled()
     })
 
     it('should throw error if amount is below dust threshold', async () => {
@@ -102,6 +123,7 @@ describe('transaction', () => {
         toAddress: testRecipient,
         amount: 100, // Below dust threshold
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow('Amount must be at least 546 tapyrus')
     })
 
@@ -111,6 +133,7 @@ describe('transaction', () => {
         toAddress: testRecipient,
         amount: 1.5, // non-integer
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow('Invalid amount')
     })
 
@@ -120,6 +143,7 @@ describe('transaction', () => {
         toAddress: 'not-a-valid-address',
         amount: 10000000,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow('Invalid recipient address')
     })
 
@@ -131,6 +155,7 @@ describe('transaction', () => {
         toAddress: coloredRecipient,
         amount: 10000000,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow('Recipient address must not be a colored address')
       expect(mockedEsplora.broadcastTransaction).not.toHaveBeenCalled()
     })
@@ -141,6 +166,7 @@ describe('transaction', () => {
         toAddress: testRecipient,
         amount: 10000000,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         feeRate: 0,
       })).rejects.toThrow('Invalid fee rate')
     })
@@ -151,6 +177,7 @@ describe('transaction', () => {
         toAddress: testRecipient,
         amount: 10000000,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         feeRate: MAX_FEE_RATE + 1,
       })).rejects.toThrow('Invalid fee rate')
     })
@@ -170,6 +197,7 @@ describe('transaction', () => {
         toAddress: testRecipient,
         amount: 10000,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         feeRate: MAX_FEE_RATE,
       })
 
@@ -188,6 +216,7 @@ describe('transaction', () => {
         toAddress: testRecipient,
         amount: 10000000,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow('No TPC UTXOs available')
     })
 
@@ -197,6 +226,7 @@ describe('transaction', () => {
         toAddress: testRecipient,
         amount: 200000000, // 2 TPC, more than available
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow('Insufficient funds')
     })
   })
@@ -216,6 +246,7 @@ describe('transaction', () => {
         amount: 500,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })
 
       expect(result.txid).toBe('c'.repeat(64))
@@ -230,6 +261,7 @@ describe('transaction', () => {
         amount: 0,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow('Amount must be greater than 0')
     })
 
@@ -240,6 +272,7 @@ describe('transaction', () => {
         amount: 100,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow('Invalid recipient address')
     })
 
@@ -251,6 +284,7 @@ describe('transaction', () => {
         amount: 100,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow('Invalid recipient address')
       expect(mockedEsplora.broadcastTransaction).not.toHaveBeenCalled()
     })
@@ -262,6 +296,7 @@ describe('transaction', () => {
         amount: MAX_COLORED_AMOUNT + 1,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow(`Amount must not exceed ${MAX_COLORED_AMOUNT}`)
       expect(mockedEsplora.getAddressUtxos).not.toHaveBeenCalled()
     })
@@ -284,6 +319,7 @@ describe('transaction', () => {
         amount: 100,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow(`must not exceed ${MAX_COLORED_AMOUNT}`)
       expect(mockedEsplora.broadcastTransaction).not.toHaveBeenCalled()
     })
@@ -297,6 +333,7 @@ describe('transaction', () => {
         amount: 500,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow('No asset UTXOs available')
     })
 
@@ -309,6 +346,7 @@ describe('transaction', () => {
         amount: 500,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow('No TPC UTXOs available for fee')
     })
 
@@ -319,6 +357,7 @@ describe('transaction', () => {
         amount: 2000, // More than available (1000)
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow('Insufficient asset balance')
     })
 
@@ -329,6 +368,7 @@ describe('transaction', () => {
         amount: 500,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         feeRate: -1,
       })).rejects.toThrow('Invalid fee rate')
     })
@@ -340,6 +380,7 @@ describe('transaction', () => {
         amount: 500,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         feeRate: MAX_FEE_RATE + 1,
       })).rejects.toThrow('Invalid fee rate')
     })
@@ -351,6 +392,7 @@ describe('transaction', () => {
         amount: 500,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })
 
       const tx = tapyrus.Transaction.fromHex(result.txHex)
@@ -378,6 +420,7 @@ describe('transaction', () => {
         amount: 300, // Less than 1000, so 700 change
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })
 
       const tx = tapyrus.Transaction.fromHex(result.txHex)
@@ -413,11 +456,27 @@ describe('transaction', () => {
         amount: 500,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })
 
       expect(result.txid).toBe('c'.repeat(64))
       expect(result.txHex).toBeDefined()
       expect(mockedEsplora.broadcastTransaction).toHaveBeenCalledTimes(1)
+    })
+
+    it('should sign with the legacy key when fromLegacyMainnetWallet is set', async () => {
+      const result = await burnAsset({
+        fromAddress: testAddress,
+        amount: 500,
+        colorId: testColorId,
+        mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
+        fromLegacyMainnetWallet: true,
+      })
+
+      expect(result.txid).toBe('c'.repeat(64))
+      expect(mockedHdwallet.getKeyPairFromLegacyMainnetWallet).toHaveBeenCalledWith(testMnemonic)
+      expect(mockedHdwallet.getKeyPairFromMnemonic).not.toHaveBeenCalled()
     })
 
     it('should burn all tokens when amount equals balance', async () => {
@@ -426,6 +485,7 @@ describe('transaction', () => {
         amount: 1000, // Burn all
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })
 
       expect(result.txid).toBe('c'.repeat(64))
@@ -437,6 +497,7 @@ describe('transaction', () => {
         amount: 0,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow('Amount must be greater than 0')
     })
 
@@ -448,6 +509,7 @@ describe('transaction', () => {
         amount: 500,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow('No asset UTXOs available')
     })
 
@@ -459,6 +521,7 @@ describe('transaction', () => {
         amount: 500,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow('No TPC UTXOs available for fee')
     })
 
@@ -468,6 +531,7 @@ describe('transaction', () => {
         amount: 2000,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })).rejects.toThrow('Insufficient asset balance')
     })
 
@@ -477,6 +541,7 @@ describe('transaction', () => {
         amount: 500, // Burn 500, change 500
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })
 
       const tx = tapyrus.Transaction.fromHex(result.txHex)
@@ -502,6 +567,7 @@ describe('transaction', () => {
         amount: 1000, // Burn all
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })
 
       const tx = tapyrus.Transaction.fromHex(result.txHex)
@@ -529,6 +595,7 @@ describe('transaction', () => {
         amount: 500,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })
 
       // Burn 500 (with 500 change)
@@ -537,6 +604,7 @@ describe('transaction', () => {
         amount: 500,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })
 
       const transferTx = tapyrus.Transaction.fromHex(transferResult.txHex)
@@ -580,6 +648,7 @@ describe('transaction', () => {
         toAddress: testRecipient,
         amount: 10000,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })
 
       const fee = paidTpcFee(result.txHex, utxos)
@@ -605,6 +674,7 @@ describe('transaction', () => {
         amount: 1000, // needs all 3 asset UTXOs, 200 asset change
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })
 
       const tx = tapyrus.Transaction.fromHex(result.txHex)
@@ -629,6 +699,7 @@ describe('transaction', () => {
         amount: 1000,
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
         feeRate: 1.5,
       })
 
@@ -654,6 +725,7 @@ describe('transaction', () => {
         amount: 1000, // burn all: no colored output remains
         colorId: testColorId,
         mnemonic: testMnemonic,
+        networkId: tapyrus.NetworkId.TAPYRUS_API,
       })
 
       const tx = tapyrus.Transaction.fromHex(result.txHex)
@@ -787,6 +859,7 @@ describe('transaction', () => {
           toAddress: testRecipient,
           amount: 10000000,
           mnemonic: testMnemonic,
+          networkId: tapyrus.NetworkId.TAPYRUS_API,
           split: 4,
         })
 
@@ -801,6 +874,7 @@ describe('transaction', () => {
           toAddress: testRecipient,
           amount: 10000003,
           mnemonic: testMnemonic,
+          networkId: tapyrus.NetworkId.TAPYRUS_API,
           split: 3,
         })
 
@@ -815,6 +889,7 @@ describe('transaction', () => {
           toAddress: testRecipient,
           amount: 10000000,
           mnemonic: testMnemonic,
+          networkId: tapyrus.NetworkId.TAPYRUS_API,
         })
 
         expect(outputValuesTo(result.txHex, testRecipient)).toEqual([10000000])
@@ -826,6 +901,7 @@ describe('transaction', () => {
           toAddress: testRecipient,
           amount: 10000000,
           mnemonic: testMnemonic,
+          networkId: tapyrus.NetworkId.TAPYRUS_API,
           split: 10,
         })
 
@@ -843,6 +919,7 @@ describe('transaction', () => {
             toAddress: testRecipient,
             amount: 10000000,
             mnemonic: testMnemonic,
+            networkId: tapyrus.NetworkId.TAPYRUS_API,
             split,
           })).rejects.toThrow('split must be an integer between 1 and 100')
         }
@@ -854,6 +931,7 @@ describe('transaction', () => {
           toAddress: testRecipient,
           amount: DUST_THRESHOLD * 4,
           mnemonic: testMnemonic,
+          networkId: tapyrus.NetworkId.TAPYRUS_API,
           split: 4,
         })
 
@@ -868,6 +946,7 @@ describe('transaction', () => {
           toAddress: testRecipient,
           amount: 10000000,
           mnemonic: testMnemonic,
+          networkId: tapyrus.NetworkId.TAPYRUS_API,
           split: MAX_SPLIT,
         })
 
@@ -884,6 +963,7 @@ describe('transaction', () => {
           toAddress: testRecipient,
           amount: DUST_THRESHOLD * 4 - 1,
           mnemonic: testMnemonic,
+          networkId: tapyrus.NetworkId.TAPYRUS_API,
           split: 4,
         })).rejects.toThrow(`Each of the 4 outputs must be at least ${DUST_THRESHOLD} tapyrus`)
       })
@@ -901,6 +981,7 @@ describe('transaction', () => {
           amount: 400,
           colorId: testColorId,
           mnemonic: testMnemonic,
+          networkId: tapyrus.NetworkId.TAPYRUS_API,
           split: 4,
         })
 
@@ -918,6 +999,7 @@ describe('transaction', () => {
           amount: 400,
           colorId: testColorId,
           mnemonic: testMnemonic,
+          networkId: tapyrus.NetworkId.TAPYRUS_API,
         })
 
         expect(coloredOutputValuesTo(result.txHex, testRecipient, testColorId)).toEqual([400])
@@ -930,6 +1012,7 @@ describe('transaction', () => {
           amount: 3,
           colorId: testColorId,
           mnemonic: testMnemonic,
+          networkId: tapyrus.NetworkId.TAPYRUS_API,
           split: 10,
         })
 
@@ -943,6 +1026,7 @@ describe('transaction', () => {
           amount: 400,
           colorId: testColorId,
           mnemonic: testMnemonic,
+          networkId: tapyrus.NetworkId.TAPYRUS_API,
           split: 4,
         })
 
@@ -961,6 +1045,7 @@ describe('transaction', () => {
             amount: 400,
             colorId: testColorId,
             mnemonic: testMnemonic,
+            networkId: tapyrus.NetworkId.TAPYRUS_API,
             split,
           })).rejects.toThrow('split must be an integer between 1 and 100')
         }

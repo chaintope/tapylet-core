@@ -10,8 +10,9 @@ describe('WalletStorage', () => {
   const password = 'correct horse battery staple'
   const walletData: WalletData = {
     mnemonic: 'test test test test test test test test test test test junk',
-    address: '1ExampleAddress',
-    publicKey: '02abcdef',
+    networks: {
+      15215628: { address: '1ExampleAddress', publicKey: '02abcdef' },
+    },
     createdAt: 1700000000000,
   }
 
@@ -97,6 +98,35 @@ describe('WalletStorage', () => {
 
       const retrieved = await storage.getWallet()
       expect(retrieved?.mnemonic).toBe('legacy mnemonic phrase')
+    })
+
+    it('carries the address of a pre-split record into legacyMainnetAddress', async () => {
+      await storage.setPassword(password)
+      await secure.set('wallet_data', {
+        mnemonic: 'test test test test test test test test test test test junk',
+        address: '1LegacyAddress',
+        publicKey: '02legacy',
+        createdAt: 1600000000000,
+      })
+
+      const retrieved = await storage.getWallet()
+      expect(retrieved?.legacyMainnetAddress).toBe('1LegacyAddress')
+      // No per-network key exists yet; the host regenerates them.
+      expect(retrieved?.networks).toEqual({})
+    })
+
+    it('keeps legacyMainnetAddress and networks of an already-split record', async () => {
+      await storage.setPassword(password)
+      const split: WalletData = {
+        ...walletData,
+        legacyMainnetAddress: '1KeptLegacy',
+        address: '1StaleAddress',
+      }
+      await secure.set('wallet_data', split)
+
+      const retrieved = await storage.getWallet()
+      expect(retrieved?.legacyMainnetAddress).toBe('1KeptLegacy')
+      expect(retrieved?.networks).toEqual(walletData.networks)
     })
   })
 

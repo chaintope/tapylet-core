@@ -71,6 +71,16 @@ export class WalletStorage {
     if (data.mnemonic == null && data.encryptedMnemonic != null) {
       data.mnemonic = data.encryptedMnemonic
     }
+    // Records saved before mainnet/testnet had separate keys hold a single
+    // `address` and no `networks`. That address is the legacy mainnet one, so
+    // carry it forward; `networks` starts empty and the host regenerates the
+    // per-network keys.
+    if (data.networks == null) {
+      data.networks = {}
+      if (data.legacyMainnetAddress == null && data.address != null) {
+        data.legacyMainnetAddress = data.address
+      }
+    }
     return data
   }
 

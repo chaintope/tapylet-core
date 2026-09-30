@@ -1,5 +1,5 @@
 import { generateAddress, validateAddress, shortenAddress } from '~/core/wallet/address'
-import { createHDWallet } from '~/core/wallet/hdwallet'
+import { createHDWallet, NetworkId } from '~/core/wallet/hdwallet'
 import { TEST_MNEMONIC } from '../../helpers/mockWallet'
 
 describe('address', () => {
@@ -7,7 +7,7 @@ describe('address', () => {
 
   describe('generateAddress', () => {
     it('should generate a valid Tapyrus address from public key', async () => {
-      const keys = await createHDWallet(testMnemonic)
+      const keys = await createHDWallet(testMnemonic, NetworkId.TAPYRUS_API)
       const address = generateAddress(keys.publicKey)
 
       expect(typeof address).toBe('string')
@@ -15,19 +15,28 @@ describe('address', () => {
     })
 
     it('should generate consistent address for same public key', async () => {
-      const keys = await createHDWallet(testMnemonic)
+      const keys = await createHDWallet(testMnemonic, NetworkId.TAPYRUS_API)
       const address1 = generateAddress(keys.publicKey)
       const address2 = generateAddress(keys.publicKey)
 
       expect(address1).toBe(address2)
     })
 
-    it('should generate address starting with 1 for prod network', async () => {
-      const keys = await createHDWallet(testMnemonic)
+    it('should generate address starting with 1 for the mainnet network', async () => {
+      const keys = await createHDWallet(testMnemonic, NetworkId.TAPYRUS_API)
       const address = generateAddress(keys.publicKey)
 
       // Prod P2PKH addresses start with '1'
       expect(address[0]).toBe('1')
+    })
+
+    it('should generate a prod-format address for a testnet key', async () => {
+      const keys = await createHDWallet(testMnemonic, NetworkId.TESTNET)
+      const address = generateAddress(keys.publicKey)
+
+      // Testnet is an operational network: it uses the prod parameters.
+      expect(address[0]).toBe('1')
+      expect(validateAddress(address)).toBe(true)
     })
 
     it('should throw error for invalid public key', () => {
@@ -37,11 +46,15 @@ describe('address', () => {
   })
 
   describe('validateAddress', () => {
-    it('should return true for valid testnet address', async () => {
-      const keys = await createHDWallet(testMnemonic)
+    it('should return true for a valid mainnet address', async () => {
+      const keys = await createHDWallet(testMnemonic, NetworkId.TAPYRUS_API)
       const address = generateAddress(keys.publicKey)
 
       expect(validateAddress(address)).toBe(true)
+    })
+
+    it('should return false for a dev-format address', () => {
+      expect(validateAddress('mzBc4XEFSdzCDcTxAgf6EZXgsZWpztRhex')).toBe(false)
     })
 
     it('should return false for invalid address', () => {

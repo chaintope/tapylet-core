@@ -2,7 +2,7 @@ import * as tapyrus from "tapyrusjs-lib"
 import { Metadata } from "tapyrusjs-lib"
 import * as ecc from "../lib/secp256k1-compat"
 import { getAddressUtxos, broadcastTransaction, isTpcColorId, type Utxo } from "../api/esplora"
-import { getKeyPairFromMnemonic } from "./hdwallet"
+import { resolveKeyPair } from "./resolveKeyPair"
 import { isValidAmount, isValidFeeRate, MAX_COLORED_AMOUNT } from "../utils/validation"
 import {
   DUST_THRESHOLD,
@@ -48,6 +48,11 @@ export interface IssueOptions {
   metadata: MetadataFields
   mnemonic: string
   fromAddress: string
+  networkId: number
+  // Sign with the pre-network-split key (see
+  // wallet/hdwallet.ts#getKeyPairFromLegacyMainnetWallet) instead of deriving
+  // one for networkId.
+  fromLegacyMainnetWallet?: boolean
   feeRate?: number
   // Number of colored outputs to split the issued amount across (1-100).
   // Every output gets floor(amount / split); the whole remainder goes to the
@@ -70,6 +75,8 @@ export const issueToken = async (options: IssueOptions): Promise<IssueResult> =>
     metadata: metadataFields,
     mnemonic,
     fromAddress,
+    networkId,
+    fromLegacyMainnetWallet,
     feeRate = DEFAULT_FEE_RATE,
     split = 1,
   } = options
@@ -93,7 +100,11 @@ export const issueToken = async (options: IssueOptions): Promise<IssueResult> =>
   const effectiveSplit = tokenType === "nft" ? 1 : split
 
   // Get keys from mnemonic
-  const { keyPair, publicKey, network } = await getKeyPairFromMnemonic(mnemonic)
+  const { keyPair, publicKey, network } = await resolveKeyPair(
+    mnemonic,
+    networkId,
+    fromLegacyMainnetWallet
+  )
 
   // Create Metadata instance
   const metadata = new Metadata(metadataFields)
